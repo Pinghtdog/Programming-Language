@@ -26,7 +26,9 @@ public class Lexer {
     }
 
     public Lexer(String source) {
-        this.source = source;
+        this.source = source
+                .replace("“", "\"")
+                .replace("”", "\"");
     }
 
     public List<Token> scanTokens() {
@@ -62,18 +64,27 @@ public class Lexer {
                 break;
             case '/':
                 if (match('/')) {
-
                     while (peek() != '\n' && !isAtEnd()) {
                         advance();
                     }
+                } else if (match('*')) {
+                    while (!(peek() == '*' && peekNext() == '/') && !isAtEnd()) {
+                        if (peek() == '\n') {
+                            line++;
+                        }
+                        advance();
+                    }
+                    if (!isAtEnd()) {
+                        advance();
+                        advance();
+                    } else {
+                        System.err.println("Line " + line + ": Unterminated block comment.");
+                    }
                 } else {
-
                     addToken(TokenType.SLASH);
                 }
                 break;
             case '"':
-            case '“':
-            case '”':
                 string();
                 break;
             case ';':
@@ -110,7 +121,7 @@ public class Lexer {
                 } else if (isAlpha(c)) {
                     identifier();
                 } else {
-                    System.err.println("Line " + line + ": Unexpected character.");
+                    System.err.println("Line " + line + ": Unexpected character '" + c + "'.");
                 }
                 break;
         }
@@ -147,9 +158,22 @@ public class Lexer {
         return source.charAt(current);
     }
 
+    private char peekNext() {
+        if (current + 1 >= source.length())
+            return '\0';
+        return source.charAt(current + 1);
+    }
+
     private void number() {
         while (isDigit(peek())) {
             advance();
+        }
+
+        if (peek() == '.' && isDigit(peekNext())) {
+            advance();
+            while (isDigit(peek())) {
+                advance();
+            }
         }
 
         String text = source.substring(start, current);
@@ -184,6 +208,13 @@ public class Lexer {
         while (peek() != '"' && !isAtEnd()) {
             if (peek() == '\n')
                 line++;
+
+            if (peek() == '\\') {
+                advance(); // skip '\'
+                if (!isAtEnd()) advance(); // skip whatever comes after
+                continue;
+            }
+
             advance();
         }
 
@@ -191,8 +222,14 @@ public class Lexer {
             System.err.println("Line " + line + ": Unterminated string.");
             return;
         }
+
         advance();
-        String value = source.substring(start + 1, current - 1);
+        
+        String value = source.substring(start + 1, current - 1)
+                .replace("\\\"", "\"")
+                .replace("\\n", "\n")
+                .replace("\\t", "\t")
+                .replace("\\\\", "\\");
         addToken(TokenType.STRING, value);
     }
 }
