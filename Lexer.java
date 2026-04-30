@@ -72,6 +72,8 @@ public class Lexer {
                 }
                 break;
             case '"':
+            case '“':
+            case '”':
                 string();
                 break;
             case ';':
