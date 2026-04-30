@@ -11,10 +11,30 @@ public class Parser {
         this.tokens = tokens;
     }
 
+    private void synchronize() {
+        advance();
+
+        while (!isAtEnd()) {
+            if (previous().type == TokenType.SEMICOLON) return;
+
+            switch (peek().type) {
+                case LET:
+                case PRINT:
+                    return;
+            }
+
+            advance();
+        }
+    }
+
     public List<Stmt> parse() {
         List<Stmt> statements = new java.util.ArrayList<>();
         while (!isAtEnd()) {
-            statements.add(statement());
+            try {
+                statements.add(statement());
+            } catch (ParseError error) {
+                synchronize();
+            }
         }
         return statements;
     }
