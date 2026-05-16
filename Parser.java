@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.List;
 
 public class Parser {
@@ -11,149 +12,264 @@ public class Parser {
         this.tokens = tokens;
     }
 
-    private void synchronize() {
-        advance();
+    public List<Stmt> parse() {
+        List<Stmt> statements = new ArrayList<>();
+        try {
+            while (match(TokenType.NEWLINE))
+                ;
 
-        while (!isAtEnd()) {
-            if (previous().type == TokenType.SEMICOLON) return;
+            consume(TokenType.SCRIPT, "Expect 'SCRIPT' at beginning of program.");
+            consume(TokenType.AREA, "Expect 'AREA' after 'SCRIPT'.");
+            consume(TokenType.NEWLINE, "Expect newline after 'SCRIPT AREA'.");
 
-            switch (peek().type) {
-                case LET:
-                case PRINT:
-                    return;
+            while (match(TokenType.NEWLINE))
+                ;
+
+            consume(TokenType.START, "Expect 'START' before code.");
+            consume(TokenType.SCRIPT, "Expect 'SCRIPT' after 'START'.");
+            consume(TokenType.NEWLINE, "Expect newline after 'START SCRIPT'.");
+
+            while (match(TokenType.NEWLINE))
+                ;
+
+            while (match(TokenType.DECLARE)) {
+                statements.add(declaration());
+
+                while (match(TokenType.NEWLINE))
+                    ;
             }
 
-            advance();
+            while (!check(TokenType.END) && !isAtEnd()) {
+                if (match(TokenType.NEWLINE))
+                    continue;
+                statements.add(statement());
+            }
+
+            consume(TokenType.END, "Expect 'END' at the bottom of the program.");
+            consume(TokenType.SCRIPT, "Expect 'SCRIPT' after 'END'.");
+
+            return statements;
+        } catch (ParseError error) {
+            return null;
         }
     }
 
-    public List<Stmt> parse() {
-        List<Stmt> statements = new java.util.ArrayList<>();
-        while (!isAtEnd()) {
-            try {
-                statements.add(statement());
-            } catch (ParseError error) {
-                synchronize();
+    private Stmt declaration() {
+        Token dataType = consumeType("Expect variable type (INT, CHAR, BOOL, FLOAT).");
+
+        List<Token> names = new ArrayList<>();
+        List<Expr> initializers = new ArrayList<>();
+
+        do {
+            Token name = consume(TokenType.IDENTIFIER, "Expect variable name.");
+            names.add(name);
+
+            Expr initializer = null;
+            if (match(TokenType.EQUAL)) {
+                initializer = expression();
             }
+            initializers.add(initializer);
+
+        } while (match(TokenType.COMMA));
+
+        if (!isAtEnd() && !check(TokenType.END)) {
+            consume(TokenType.NEWLINE, "Expect newline after declaration.");
         }
-        return statements;
+
+        return new Stmt.Declare(dataType, names, initializers);
+    }
+
+    private Token consumeType(String message) {
+        if (match(TokenType.INT, TokenType.CHAR, TokenType.BOOL, TokenType.FLOAT)) {
+            return previous();
+        }
+        throw error(peek(), message);
     }
 
     private Stmt statement() {
-        if (match(TokenType.LET))
-            return varDeclaration();
+        if (match(TokenType.IF))
+            return ifStatement();
+
         if (match(TokenType.PRINT))
             return printStatement();
-        return expressionStatement();
+
+        if (match(TokenType.IDENTIFIER))
+            return assignmentStatement();
+
+        throw error(peek(), "Expect valid statement.");
     }
 
-    private Stmt varDeclaration() {
-        Token name = consume(TokenType.IDENTIFIER, "Expect variable name.");
+    private Stmt ifStatement() {
+        consume(TokenType.LPAREN, "Expect '(' after 'IF'.");
+        Expr condition = expression();
+        consume(TokenType.RPAREN, "Expect ')' after IF condition.");
 
-        Expr initializer = null;
-        if (match(TokenType.EQUAL)) {
-            initializer = expression();
+        while (match(TokenType.NEWLINE))
+            ;
+
+        consume(TokenType.START, "Expect 'START' before 'IF' block.");
+        consume(TokenType.IF, "Expect 'IF' after 'START'.");
+
+        while (match(TokenType.NEWLINE))
+            ;
+
+        List<Stmt> thenBranch = new ArrayList<>();
+        while (!check(TokenType.END) && !isAtEnd()) {
+            if (match(TokenType.NEWLINE))
+                continue;
+            thenBranch.add(statement());
         }
 
-        consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.");
-        return new Stmt.Var(name, initializer);
+        consume(TokenType.END, "Expect 'END' after 'IF' block.");
+        consume(TokenType.IF, "Expect 'IF' after 'END'.");
+
+        while (match(TokenType.NEWLINE))
+            ;
+
+        Stmt elseBranch = null;
+        if (match(TokenType.ELSE)) {
+            if (match(TokenType.IF)) {
+
+                elseBranch = ifStatement();
+            } else {
+                while (match(TokenType.NEWLINE))
+                    ;
+                consume(TokenType.START, "Expect 'START' before 'ELSE' block.");
+                consume(TokenType.IF, "Expect 'IF' after 'START' in 'ELSE' block.");
+
+                while (match(TokenType.NEWLINE))
+                    ;
+
+                List<Stmt> elseStmts = new ArrayList<>();
+                while (!check(TokenType.END) && !isAtEnd()) {
+                    if (match(TokenType.NEWLINE))
+                        continue;
+                    elseStmts.add(statement());
+                }
+
+                consume(TokenType.END, "Expect 'END' after 'ELSE' block.");
+                consume(TokenType.IF, "Expect 'IF' after 'END'.");
+
+                elseBranch = new Stmt.Block(elseStmts);
+            }
+        }
+
+        return new Stmt.If(condition, new Stmt.Block(thenBranch), elseBranch);
+    }
+
+    private Stmt assignmentStatement() {
+        Token name = previous();
+
+        consume(TokenType.EQUAL, "Expect '=' after variable name.");
+        Expr value = expression();
+
+        if (!isAtEnd() && !check(TokenType.END)) {
+            consume(TokenType.NEWLINE, "Expect newline after assignment.");
+        }
+
+        return new Stmt.Assign(name, value);
     }
 
     private Stmt printStatement() {
+        consume(TokenType.COLON, "Expect ':' after PRINT.");
         Expr value = expression();
-        consume(TokenType.SEMICOLON, "Expect ';' after value.");
+
+        if (!isAtEnd() && !check(TokenType.END)) {
+            consume(TokenType.NEWLINE, "Expect newline after statement.");
+        }
+
         return new Stmt.Print(value);
     }
 
-    private Stmt expressionStatement() {
-        Expr expr = expression();
-        consume(TokenType.SEMICOLON, "Expect ';' after expression.");
-        return new Stmt.Expression(expr);
+    private Expr expression() {
+        return or();
     }
 
-    private Expr expression() {
-        return equality();
+    private Expr or() {
+        Expr expr = and();
+        while (match(TokenType.OR)) {
+            Token operator = previous();
+            Expr right = and();
+            expr = new Expr.Logical(expr, operator, right);
+        }
+        return expr;
+    }
+
+    private Expr and() {
+        Expr expr = equality();
+        while (match(TokenType.AND)) {
+            Token operator = previous();
+            Expr right = equality();
+            expr = new Expr.Logical(expr, operator, right);
+        }
+        return expr;
     }
 
     private Expr equality() {
         Expr expr = comparison();
-
-        while (match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL)) {
+        while (match(TokenType.NOT_EQUAL, TokenType.EQUAL_EQUAL)) {
             Token operator = previous();
             Expr right = comparison();
             expr = new Expr.Binary(expr, operator, right);
         }
-
         return expr;
     }
 
     private Expr comparison() {
         Expr expr = term();
-
         while (match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL)) {
             Token operator = previous();
             Expr right = term();
             expr = new Expr.Binary(expr, operator, right);
         }
-
         return expr;
     }
 
     private Expr term() {
         Expr expr = factor();
-
-        while (match(TokenType.MINUS, TokenType.PLUS)) {
+        while (match(TokenType.PLUS, TokenType.MINUS)) {
             Token operator = previous();
             Expr right = factor();
             expr = new Expr.Binary(expr, operator, right);
         }
-
         return expr;
     }
 
     private Expr factor() {
         Expr expr = unary();
-
-        while (match(TokenType.SLASH, TokenType.STAR)) {
+        while (match(TokenType.STAR, TokenType.SLASH, TokenType.MODULO)) {
             Token operator = previous();
             Expr right = unary();
             expr = new Expr.Binary(expr, operator, right);
         }
-
         return expr;
     }
 
     private Expr unary() {
-        if (match(TokenType.BANG, TokenType.MINUS)) {
+        if (match(TokenType.NOT, TokenType.MINUS, TokenType.PLUS)) {
             Token operator = previous();
             Expr right = unary();
             return new Expr.Unary(operator, right);
         }
-
         return primary();
     }
 
     private Expr primary() {
-        if (match(TokenType.FALSE))
-            return new Expr.Literal(false);
-        if (match(TokenType.TRUE))
-            return new Expr.Literal(true);
-        if (match(TokenType.NUMBER, TokenType.STRING)) {
+        if (match(TokenType.STRING_LITERAL, TokenType.INT_LITERAL, TokenType.FLOAT_LITERAL, TokenType.CHAR_LITERAL)) {
             return new Expr.Literal(previous().literal);
         }
-
         if (match(TokenType.IDENTIFIER)) {
             return new Expr.Variable(previous());
         }
-
         if (match(TokenType.LPAREN)) {
             Expr expr = expression();
             consume(TokenType.RPAREN, "Expect ')' after expression.");
             return new Expr.Grouping(expr);
         }
-
         throw error(peek(), "Expect expression.");
     }
+
+    // --- HELPER METHODS ---
 
     private boolean match(TokenType... types) {
         for (TokenType type : types) {

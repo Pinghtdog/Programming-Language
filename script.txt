@@ -1,4 +1,18 @@
-let a = 10;
-let b = 25;
-print "The answer is:";
-print a * b;
+SCRIPT AREA
+START SCRIPT
+DECLARE INT score=85
+
+IF (score >= 90)
+START IF
+    PRINT: "Grade: A"
+END IF
+ELSE IF (score >= 80)
+START IF
+    PRINT: "Grade: B"
+END IF
+ELSE
+START IF
+    PRINT: "Grade: C"
+END IF
+
+END SCRIPT

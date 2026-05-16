@@ -1,4 +1,38 @@
-let a = 10;
-let b = 25;
-print "The answer is:";
-print a * b;
+SCRIPT AREA
+START SCRIPT
+DECLARE FLOAT int=100
+PRINT: int
+END SCRIPT
+ 
+%% this will run
+
+
+%% this is a sample program in CODE
+SCRIPT AREA
+%% START SCRIPT
+START SCRIPT
+%% END SCRIPT
+PRINT: "Hello"
+END SCRIPT
+%% this is a sample program in CODE
+
+
+SCRIPT AREA
+
+START SCRIPT
+
+DECLARE INT a=5, b=6
+
+DECLARE BOOL float="FALSE"
+
+PRINT a
+
+END SCRIPT
+
+SCRIPT AREA
+START SCRIPT
+DECLARE BOOL f
+f = "true"
+PRINT: f
+END SCRIPT
+ 

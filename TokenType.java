@@ -1,18 +1,33 @@
 public enum TokenType {
-    // character tokens
-    PLUS, MINUS, STAR, SLASH, LPAREN, RPAREN, EQUAL, SEMICOLON,
+    // Structure Keywords
+    SCRIPT, AREA, START, END,
 
-    // for code block
-    LBRACE, RBRACE,
+    // Data Types
+    DECLARE, INT, CHAR, BOOL, FLOAT,
 
-    // Logic and Comparisons
-    BANG, BANG_EQUAL,
-    EQUAL_EQUAL,
-    GREATER, GREATER_EQUAL,
-    LESS, LESS_EQUAL,
+    // Control Flow Keywords
+    IF, ELSE, FOR, REPEAT, WHEN,
 
-    NUMBER, IDENTIFIER, STRING,
+    // I/O Keywords
+    PRINT, SCAN,
 
-    // Keywords
-    IF, ELSE, WHILE, FOR, TRUE, FALSE, LET, PRINT, EOF
+    // Logical Operators
+    AND, OR, NOT,
+
+    // Single-character tokens
+    PLUS, MINUS, STAR, SLASH, MODULO,
+    LPAREN, RPAREN, LBRACKET, RBRACKET,
+    COMMA, COLON, AMPERSAND, DOLLAR,
+
+    // One or two character tokens
+    EQUAL, EQUAL_EQUAL, // = and ==
+    GREATER, GREATER_EQUAL, // > and >=
+    LESS, LESS_EQUAL, // < and <=
+    NOT_EQUAL, // <>
+
+    // Literals
+    IDENTIFIER, INT_LITERAL, FLOAT_LITERAL, CHAR_LITERAL, STRING_LITERAL,
+
+    // Special
+    NEWLINE, EOF
 }
