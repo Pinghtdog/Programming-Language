@@ -47,6 +47,24 @@ public class Interpreter {
                 execute(ifStmt.elseBranch);
             }
         }
+        // repeat when (do while)
+        else if (stmt instanceof Stmt.While) {
+            Stmt.While whileStmt = (Stmt.While) stmt;
+            while (isTruthy(evaluate(whileStmt.condition))) {
+                execute(whileStmt.body);
+            }
+        }
+        // for loop
+        else if (stmt instanceof Stmt.For) {
+            Stmt.For forStmt = (Stmt.For) stmt;
+
+            execute(forStmt.initialization);
+
+            while (isTruthy(evaluate(forStmt.condition))) {
+                execute(forStmt.body);
+                execute(forStmt.increment);
+            }
+        }
     }
 
     private Object evaluate(Expr expr) {

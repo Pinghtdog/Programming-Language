@@ -1,18 +1,28 @@
 SCRIPT AREA
 START SCRIPT
-DECLARE INT score=85
 
-IF (score >= 90)
-START IF
-    PRINT: "Grade: A"
-END IF
-ELSE IF (score >= 80)
-START IF
-    PRINT: "Grade: B"
-END IF
-ELSE
-START IF
-    PRINT: "Grade: C"
-END IF
+DECLARE INT active = 1
+DECLARE INT counter
+
+REPEAT WHEN (active == 1)
+START REPEAT
+    
+    PRINT: "Starting For Loop!"
+
+    FOR (counter = 1, counter <= 3, counter = counter + 1)
+    START FOR
+        
+        IF (counter == 2)
+        START IF
+            PRINT: "Counter is exactly 2!"
+        END IF
+        
+        PRINT: counter
+    END FOR
+
+    PRINT: "Shutting down loop."
+    active = 0 
+
+END REPEAT
 
 END SCRIPT

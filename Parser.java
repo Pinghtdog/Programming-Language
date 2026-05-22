@@ -96,10 +96,16 @@ public class Parser {
         if (match(TokenType.IDENTIFIER))
             return assignmentStatement();
 
+        if (match(TokenType.FOR))
+            return forStatement();
+        if (match(TokenType.REPEAT))
+            return repeatStatement();
+
         throw error(peek(), "Expect valid statement.");
     }
 
     private Stmt ifStatement() {
+
         consume(TokenType.LPAREN, "Expect '(' after 'IF'.");
         Expr condition = expression();
         consume(TokenType.RPAREN, "Expect ')' after IF condition.");
@@ -267,6 +273,74 @@ public class Parser {
             return new Expr.Grouping(expr);
         }
         throw error(peek(), "Expect expression.");
+    }
+
+    private Stmt forStatement() {
+        consume(TokenType.LPAREN, "Expect '(' after 'FOR'.");
+
+        // 1. Initialization (e.g., x = 1)
+        Token initName = consume(TokenType.IDENTIFIER, "Expect variable name.");
+        consume(TokenType.EQUAL, "Expect '=' after variable.");
+        Stmt initialization = new Stmt.Assign(initName, expression());
+        consume(TokenType.COMMA, "Expect ',' after initialization.");
+
+        // 2. Condition (e.g., x < 10)
+        Expr condition = expression();
+        consume(TokenType.COMMA, "Expect ',' after condition.");
+
+        // 3. Increment (e.g., x = x + 1)
+        Token incName = consume(TokenType.IDENTIFIER, "Expect variable name.");
+        consume(TokenType.EQUAL, "Expect '=' after variable.");
+        Stmt increment = new Stmt.Assign(incName, expression());
+
+        consume(TokenType.RPAREN, "Expect ')' after FOR clauses.");
+        while (match(TokenType.NEWLINE))
+            ; // Skip blanks
+
+        // 4. The Block
+        consume(TokenType.START, "Expect 'START' before 'FOR' block.");
+        consume(TokenType.FOR, "Expect 'FOR' after 'START'.");
+        while (match(TokenType.NEWLINE))
+            ;
+
+        java.util.List<Stmt> body = new java.util.ArrayList<>();
+        while (!check(TokenType.END) && !isAtEnd()) {
+            if (match(TokenType.NEWLINE))
+                continue;
+            body.add(statement());
+        }
+
+        consume(TokenType.END, "Expect 'END' after block.");
+        consume(TokenType.FOR, "Expect 'FOR' after 'END'.");
+
+        return new Stmt.For(initialization, condition, increment, new Stmt.Block(body));
+    }
+
+    private Stmt repeatStatement() {
+        consume(TokenType.WHEN, "Expect 'WHEN' after 'REPEAT'.");
+        consume(TokenType.LPAREN, "Expect '(' after 'WHEN'.");
+        Expr condition = expression();
+        consume(TokenType.RPAREN, "Expect ')' after condition.");
+
+        while (match(TokenType.NEWLINE))
+            ; // Skip blanks
+
+        consume(TokenType.START, "Expect 'START' before 'REPEAT' block.");
+        consume(TokenType.REPEAT, "Expect 'REPEAT' after 'START'.");
+        while (match(TokenType.NEWLINE))
+            ;
+
+        java.util.List<Stmt> body = new java.util.ArrayList<>();
+        while (!check(TokenType.END) && !isAtEnd()) {
+            if (match(TokenType.NEWLINE))
+                continue;
+            body.add(statement());
+        }
+
+        consume(TokenType.END, "Expect 'END' after block.");
+        consume(TokenType.REPEAT, "Expect 'REPEAT' after 'END'.");
+
+        return new Stmt.While(condition, new Stmt.Block(body));
     }
 
     // --- HELPER METHODS ---

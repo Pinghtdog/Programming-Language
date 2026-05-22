@@ -32,7 +32,7 @@ public abstract class Stmt {
         }
     }
 
-    // group of statements in { }
+    // group statements in { }
     public static class Block extends Stmt {
         public final List<Stmt> statements;
 
@@ -41,7 +41,7 @@ public abstract class Stmt {
         }
     }
 
-    // IF / ELSE IF / ELSE
+    // if elif else
     public static class If extends Stmt {
         public final Expr condition;
         public final Stmt thenBranch;
@@ -51,6 +51,32 @@ public abstract class Stmt {
             this.condition = condition;
             this.thenBranch = thenBranch;
             this.elseBranch = elseBranch;
+        }
+    }
+
+    // repeat when (do while)
+    public static class While extends Stmt {
+        public final Expr condition;
+        public final Stmt body;
+
+        public While(Expr condition, Stmt body) {
+            this.condition = condition;
+            this.body = body;
+        }
+    }
+
+    // for loop
+    public static class For extends Stmt {
+        public final Stmt initialization;
+        public final Expr condition;
+        public final Stmt increment;
+        public final Stmt body;
+
+        public For(Stmt initialization, Expr condition, Stmt increment, Stmt body) {
+            this.initialization = initialization;
+            this.condition = condition;
+            this.increment = increment;
+            this.body = body;
         }
     }
 }

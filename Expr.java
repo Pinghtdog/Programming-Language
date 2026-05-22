@@ -46,8 +46,6 @@ public abstract class Expr {
         }
     }
 
-    // --- THE MISSING BLOCK! ---
-    // This is what your Parser was trying to find for AND / OR logic
     public static class Logical extends Expr {
         public final Expr left;
         public final Token operator;
