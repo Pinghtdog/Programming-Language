@@ -1,0 +1,10 @@
+SCRIPT AREA
+                        START SCRIPT
+                        DECLARE INT n, o
+                        DECLARE FLOAT f
+                        SCAN: n, o
+                        SCAN: f
+                        n = n + 1
+                        f = f + 1.1
+                        PRINT: f & " " & n & " " & o
+                        END SCRIPT
