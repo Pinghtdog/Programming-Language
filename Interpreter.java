@@ -91,12 +91,11 @@ public class Interpreter {
             return environment.get(((Expr.Variable) expr).name);
         }
 
-        // --- THE MISSING LINK 2: Executes the Assignment and chains the values! ---
         if (expr instanceof Expr.Assign) {
             Expr.Assign assign = (Expr.Assign) expr;
-            Object value = evaluate(assign.value); // Calculate the right side (y = 4)
-            environment.assign(assign.name, value); // Save to memory!
-            return value; // Return it so the left side gets it too (x = 4)
+            Object value = evaluate(assign.value);
+            environment.assign(assign.name, value);
+            return value;
         }
 
         if (expr instanceof Expr.Grouping) {
