@@ -89,19 +89,15 @@ public class Parser {
     private Stmt statement() {
         if (match(TokenType.IF))
             return ifStatement();
-
-        if (match(TokenType.PRINT))
-            return printStatement();
-
-        if (match(TokenType.IDENTIFIER))
-            return assignmentStatement();
-
         if (match(TokenType.FOR))
             return forStatement();
         if (match(TokenType.REPEAT))
             return repeatStatement();
-
-        throw error(peek(), "Expect valid statement.");
+        if (match(TokenType.PRINT))
+            return printStatement();
+        if (match(TokenType.SCAN))
+            return scanStatement();
+        return expressionStatement();
     }
 
     private Stmt ifStatement() {
@@ -163,22 +159,37 @@ public class Parser {
         return new Stmt.If(condition, new Stmt.Block(thenBranch), elseBranch);
     }
 
-    private Stmt assignmentStatement() {
-        Token name = previous();
-
-        consume(TokenType.EQUAL, "Expect '=' after variable name.");
-        Expr value = expression();
-
+    private Stmt expressionStatement() {
+        Expr expr = expression();
         if (!isAtEnd() && !check(TokenType.END)) {
-            consume(TokenType.NEWLINE, "Expect newline after assignment.");
+            consume(TokenType.NEWLINE, "Expect newline after statement.");
+        }
+        return new Stmt.Expression(expr);
+    }
+
+    private Stmt scanStatement() {
+        consume(TokenType.COLON, "Expect ':' after SCAN.");
+
+        List<Token> names = new ArrayList<>();
+        do {
+            names.add(consume(TokenType.IDENTIFIER, "Expect variable name to scan into."));
+        } while (match(TokenType.COMMA));
+        if (!isAtEnd() && !check(TokenType.END)) {
+            consume(TokenType.NEWLINE, "Expect newline after statement.");
         }
 
-        return new Stmt.Assign(name, value);
+        return new Stmt.Scan(names);
     }
 
     private Stmt printStatement() {
         consume(TokenType.COLON, "Expect ':' after PRINT.");
         Expr value = expression();
+
+        while (match(TokenType.AMPERSAND)) {
+            Token operator = previous();
+            Expr right = expression();
+            value = new Expr.Binary(value, operator, right);
+        }
 
         if (!isAtEnd() && !check(TokenType.END)) {
             consume(TokenType.NEWLINE, "Expect newline after statement.");
@@ -188,7 +199,22 @@ public class Parser {
     }
 
     private Expr expression() {
-        return or();
+        return assignment();
+    }
+
+    private Expr assignment() {
+        Expr expr = or();
+        if (match(TokenType.EQUAL)) {
+            Token equals = previous();
+            Expr value = assignment();
+
+            if (expr instanceof Expr.Variable) {
+                Token name = ((Expr.Variable) expr).name;
+                return new Expr.Assign(name, value);
+            }
+            throw error(equals, "Invalid assignment target.");
+        }
+        return expr;
     }
 
     private Expr or() {
@@ -261,6 +287,10 @@ public class Parser {
     }
 
     private Expr primary() {
+        if (match(TokenType.DOLLAR)) {
+            return new Expr.Literal("\n");
+        }
+
         if (match(TokenType.STRING_LITERAL, TokenType.INT_LITERAL, TokenType.FLOAT_LITERAL, TokenType.CHAR_LITERAL)) {
             return new Expr.Literal(previous().literal);
         }
@@ -278,26 +308,28 @@ public class Parser {
     private Stmt forStatement() {
         consume(TokenType.LPAREN, "Expect '(' after 'FOR'.");
 
-        // 1. Initialization (e.g., x = 1)
+        // init
         Token initName = consume(TokenType.IDENTIFIER, "Expect variable name.");
         consume(TokenType.EQUAL, "Expect '=' after variable.");
-        Stmt initialization = new Stmt.Assign(initName, expression());
+
+        Stmt initialization = new Stmt.Expression(new Expr.Assign(initName, expression()));
+
         consume(TokenType.COMMA, "Expect ',' after initialization.");
 
-        // 2. Condition (e.g., x < 10)
+        // argument
         Expr condition = expression();
         consume(TokenType.COMMA, "Expect ',' after condition.");
 
-        // 3. Increment (e.g., x = x + 1)
+        // increment
         Token incName = consume(TokenType.IDENTIFIER, "Expect variable name.");
         consume(TokenType.EQUAL, "Expect '=' after variable.");
-        Stmt increment = new Stmt.Assign(incName, expression());
+        Stmt increment = new Stmt.Expression(new Expr.Assign(incName, expression()));
 
         consume(TokenType.RPAREN, "Expect ')' after FOR clauses.");
         while (match(TokenType.NEWLINE))
-            ; // Skip blanks
+            ;
 
-        // 4. The Block
+        // loop block
         consume(TokenType.START, "Expect 'START' before 'FOR' block.");
         consume(TokenType.FOR, "Expect 'FOR' after 'START'.");
         while (match(TokenType.NEWLINE))
@@ -323,7 +355,7 @@ public class Parser {
         consume(TokenType.RPAREN, "Expect ')' after condition.");
 
         while (match(TokenType.NEWLINE))
-            ; // Skip blanks
+            ;
 
         consume(TokenType.START, "Expect 'START' before 'REPEAT' block.");
         consume(TokenType.REPEAT, "Expect 'REPEAT' after 'START'.");

@@ -58,9 +58,26 @@ public class Lexer {
             case ')':
                 addToken(TokenType.RPAREN);
                 break;
+
+            // --- UPDATED: Escape Codes for printing reserved symbols! ---
             case '[':
-                addToken(TokenType.LBRACKET);
+                if (isAtEnd()) {
+                    System.err.println("Line " + line + ": Unterminated escape sequence.");
+                    break;
+                }
+
+                // Grab the EXACT next character, even if it is a ']'
+                String escapedText = String.valueOf(advance());
+
+                // Now check if it is properly closed with a ']'
+                if (!isAtEnd() && peek() == ']') {
+                    advance(); // Consume the closing ']'
+                    addToken(TokenType.STRING_LITERAL, escapedText);
+                } else {
+                    System.err.println("Line " + line + ": Invalid escape sequence. Expected closing ']'.");
+                }
                 break;
+
             case ']':
                 addToken(TokenType.RBRACKET);
                 break;
@@ -169,7 +186,6 @@ public class Lexer {
 
         String value = source.substring(start, current);
         if (isFloat) {
-
             addToken(TokenType.FLOAT_LITERAL, Double.parseDouble(value));
         } else {
             addToken(TokenType.INT_LITERAL, Integer.parseInt(value));

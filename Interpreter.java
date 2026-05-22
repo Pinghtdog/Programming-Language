@@ -3,6 +3,7 @@ import java.util.List;
 public class Interpreter {
 
     private Environment environment = new Environment();
+    private static final java.util.Scanner inputScanner = new java.util.Scanner(System.in);
 
     public void interpret(List<Stmt> statements) {
         if (statements == null)
@@ -12,10 +13,22 @@ public class Interpreter {
         }
     }
 
+    private void executeBlock(List<Stmt> statements, Environment innerEnvironment) {
+        Environment previous = this.environment;
+        try {
+            this.environment = innerEnvironment;
+            for (Stmt statement : statements) {
+                execute(statement);
+            }
+        } finally {
+            this.environment = previous;
+        }
+    }
+
     private void execute(Stmt stmt) {
         if (stmt instanceof Stmt.Print) {
             Object value = evaluate(((Stmt.Print) stmt).expression);
-            System.out.println(value);
+            System.out.println(stringify(value));
         } else if (stmt instanceof Stmt.Declare) {
             Stmt.Declare decl = (Stmt.Declare) stmt;
             for (int i = 0; i < decl.names.size(); i++) {
@@ -26,17 +39,15 @@ public class Interpreter {
                 if (initializer != null) {
                     value = evaluate(initializer);
                 }
-                environment.define(name.lexeme, value);
+                environment.define(name.lexeme, decl.dataType.type, value);
             }
-        } else if (stmt instanceof Stmt.Assign) {
-            Stmt.Assign assign = (Stmt.Assign) stmt;
-            Object value = evaluate(assign.value);
-            environment.assign(assign.name, value);
+        }
+        // --- THE MISSING LINK 1: Evaluates standard math and assignments! ---
+        else if (stmt instanceof Stmt.Expression) {
+            evaluate(((Stmt.Expression) stmt).expression);
         } else if (stmt instanceof Stmt.Block) {
             Stmt.Block block = (Stmt.Block) stmt;
-            for (Stmt statement : block.statements) {
-                execute(statement);
-            }
+            executeBlock(block.statements, new Environment(environment));
         } else if (stmt instanceof Stmt.If) {
             Stmt.If ifStmt = (Stmt.If) stmt;
             Object condition = evaluate(ifStmt.condition);
@@ -46,16 +57,12 @@ public class Interpreter {
             } else if (ifStmt.elseBranch != null) {
                 execute(ifStmt.elseBranch);
             }
-        }
-        // repeat when (do while)
-        else if (stmt instanceof Stmt.While) {
+        } else if (stmt instanceof Stmt.While) {
             Stmt.While whileStmt = (Stmt.While) stmt;
             while (isTruthy(evaluate(whileStmt.condition))) {
                 execute(whileStmt.body);
             }
-        }
-        // for loop
-        else if (stmt instanceof Stmt.For) {
+        } else if (stmt instanceof Stmt.For) {
             Stmt.For forStmt = (Stmt.For) stmt;
 
             execute(forStmt.initialization);
@@ -63,6 +70,15 @@ public class Interpreter {
             while (isTruthy(evaluate(forStmt.condition))) {
                 execute(forStmt.body);
                 execute(forStmt.increment);
+            }
+        } else if (stmt instanceof Stmt.Scan) {
+            Stmt.Scan scan = (Stmt.Scan) stmt;
+            for (Token name : scan.names) {
+                System.out.print("> Enter value for " + name.lexeme + ": ");
+                String input = inputScanner.nextLine().trim();
+
+                Object parsedValue = parseInput(input);
+                environment.assign(name, parsedValue);
             }
         }
     }
@@ -74,11 +90,19 @@ public class Interpreter {
         if (expr instanceof Expr.Variable) {
             return environment.get(((Expr.Variable) expr).name);
         }
+
+        // --- THE MISSING LINK 2: Executes the Assignment and chains the values! ---
+        if (expr instanceof Expr.Assign) {
+            Expr.Assign assign = (Expr.Assign) expr;
+            Object value = evaluate(assign.value); // Calculate the right side (y = 4)
+            environment.assign(assign.name, value); // Save to memory!
+            return value; // Return it so the left side gets it too (x = 4)
+        }
+
         if (expr instanceof Expr.Grouping) {
             return evaluate(((Expr.Grouping) expr).expression);
         }
 
-        // --- UNARY (Negative, Positive, NOT) ---
         if (expr instanceof Expr.Unary) {
             Expr.Unary unary = (Expr.Unary) expr;
             Object right = evaluate(unary.right);
@@ -95,7 +119,6 @@ public class Interpreter {
             }
         }
 
-        // --- LOGICAL (AND, OR) ---
         if (expr instanceof Expr.Logical) {
             Expr.Logical logical = (Expr.Logical) expr;
             Object left = evaluate(logical.left);
@@ -112,11 +135,14 @@ public class Interpreter {
             return isTruthy(right) ? "TRUE" : "FALSE";
         }
 
-        // --- BINARY (Math & Comparisons) ---
         if (expr instanceof Expr.Binary) {
             Expr.Binary binary = (Expr.Binary) expr;
             Object left = evaluate(binary.left);
             Object right = evaluate(binary.right);
+
+            if (binary.operator.type == TokenType.AMPERSAND) {
+                return stringify(left) + stringify(right);
+            }
 
             if (left instanceof Integer && right instanceof Integer) {
                 int l = (int) left;
@@ -195,12 +221,40 @@ public class Interpreter {
         return null;
     }
 
-    // --- HELPER ---
     private boolean isTruthy(Object object) {
         if (object == null)
             return false;
         if (object instanceof String)
             return object.equals("TRUE");
         return false;
+    }
+
+    private String stringify(Object object) {
+        if (object == null)
+            return "null";
+        if (object instanceof Double) {
+            String text = object.toString();
+            if (text.endsWith(".0")) {
+                text = text.substring(0, text.length() - 2);
+            }
+            return text;
+        }
+        return object.toString();
+    }
+
+    private Object parseInput(String input) {
+        if (input.equals("TRUE") || input.equals("FALSE"))
+            return input;
+        try {
+            return Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+        }
+        try {
+            return Double.parseDouble(input);
+        } catch (NumberFormatException e) {
+        }
+        if (input.length() == 1)
+            return input.charAt(0);
+        return input;
     }
 }

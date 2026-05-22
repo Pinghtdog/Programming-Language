@@ -22,13 +22,11 @@ public abstract class Stmt {
         }
     }
 
-    public static class Assign extends Stmt {
-        public final Token name;
-        public final Expr value;
+    public static class Expression extends Stmt {
+        public final Expr expression;
 
-        public Assign(Token name, Expr value) {
-            this.name = name;
-            this.value = value;
+        public Expression(Expr expression) {
+            this.expression = expression;
         }
     }
 
@@ -77,6 +75,15 @@ public abstract class Stmt {
             this.condition = condition;
             this.increment = increment;
             this.body = body;
+        }
+    }
+
+    // scanner
+    public static class Scan extends Stmt {
+        public final List<Token> names;
+
+        public Scan(List<Token> names) {
+            this.names = names;
         }
     }
 }
